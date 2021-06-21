@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import colorsys
 import re
 from dataclasses import dataclass, field
@@ -16,7 +14,7 @@ regex_cmykColor = r'cmyk\s?\((?P<cyan>\d{1,3})%?,\s?(?P<magenta>\d{1,3})%?,' \
 regex_hexColor = r'(?P<hex>#[0-9a-fA-F]+)'
 
 ##
-# proxy datatype's
+# proxy datatype
 ##
 RGB = NamedTuple("RGB", [("red", int), ("green", int), ("blue", int)])
 HSL = NamedTuple("HSL", [("hue", int), ("saturation", float), ("lightness", float)])
