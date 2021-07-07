@@ -159,7 +159,7 @@ def move_cursor(pos: tuple[int, int], flush=True):
 
     """
     x, y = pos
-    sys.stdout.write(f"\033[{y};{x}H")
+    sys.stdout.write(f"\033[{y + 1};{x + 1}H")
     sys.stdout.flush() if flush else None
 
 

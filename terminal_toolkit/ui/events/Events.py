@@ -1,5 +1,5 @@
 from abc import ABC
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Union
 
 from collections import namedtuple
@@ -9,7 +9,7 @@ Position = namedtuple("Position", "x y")
 
 
 @unique
-class ModifierKey(Enum):
+class ModifierKeyCodes(Enum):
     ENTER = '\n'
     ESC = '\x1b'
     TAB = '\t'
@@ -61,12 +61,12 @@ class ModifierKey(Enum):
 
 @dataclass(frozen=True)
 class Event(ABC):
-    unparsed_data: str
+    _unparsed_data: str = field(repr=False)
 
 
 @dataclass(frozen=True)
 class UNKNOWN_EVENT(Event):
-    pass
+    data: str
 
 
 @dataclass(frozen=True)
@@ -77,31 +77,26 @@ class MouseEvent(Event):
 
 @dataclass(frozen=True)
 class KeyboardEvent(Event):
-    key: Union[str, ModifierKey]
+    key: Union[str, ModifierKeyCodes]
 
 
 @dataclass(frozen=True)
-class KeyPressed(KeyboardEvent):
+class Key(KeyboardEvent):
     pass
 
 
 @dataclass(frozen=True)
-class ModifierKeyPressed(KeyboardEvent):
+class ModifierKey(KeyboardEvent):
     pass
 
 
 @dataclass(frozen=True)
-class MouseClick(MouseEvent):
+class Click(MouseEvent):
     pass
 
 
 @dataclass(frozen=True)
-class MouseRelease(MouseEvent):
-    pass
-
-
-@dataclass(frozen=True)
-class MouseRightClick(MouseEvent):
+class RightClick(MouseEvent):
     pass
 
 
@@ -133,9 +128,9 @@ class MouseOff(MouseEvent):
 
 @dataclass(frozen=True)
 class ScrollUp(MouseEvent):
-    pass
+    times: int
 
 
 @dataclass(frozen=True)
 class ScrollDown(MouseEvent):
-    pass
+    times: int
