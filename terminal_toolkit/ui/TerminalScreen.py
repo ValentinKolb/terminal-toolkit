@@ -1,13 +1,12 @@
 import collections
-from typing import AnyStr, Iterable
+from typing import AnyStr, Iterable, AsyncIterable
 from time import perf_counter
 from statistics import mean
 
 from terminal_toolkit.console import Console
 from terminal_toolkit.console.Console import WIDTH, HEIGHT
-from terminal_toolkit.ui.events import EventListener, Events
+from terminal_toolkit.ui.events import EventListener
 from terminal_toolkit.ui.events.Events import Event
-from terminal_toolkit.ui.widgets.BaseClasses import BaseWidget
 
 X = int
 Y = int
@@ -20,6 +19,8 @@ class TerminalScreen:
 
     Examples
     --------
+
+    This small programm will print the last pressed key at the current position of the mouse until CONTOL-C is pressed.
 
     >>> from terminal_toolkit.ui.TerminalScreen import TerminalScreen
     >>> from terminal_toolkit.ui.events.Events import Key
@@ -48,6 +49,7 @@ class TerminalScreen:
         self._draw_time = collections.deque(maxlen=50)
         self._curr_screen_buf = {}
         self._last_screen_buf = {}
+        self._size = self.get_size()
 
     def events(self) -> Iterable[Event]:
         """
@@ -71,7 +73,7 @@ class TerminalScreen:
         except KeyboardInterrupt:
             return
 
-    async def async_events(self) -> Iterable[Event]:
+    async def async_events(self) -> AsyncIterable[Event]:
         """
         This generator returns all events the user enters until a KeyboardInterrupt in raised
         (the user terminates the program)
@@ -140,17 +142,17 @@ class TerminalScreen:
             self._curr_screen_buf[(x, y)] = c
             x += 1
 
-    def put_widget(self, widget: BaseWidget):
+    def put_pixels(self, pixels: dict[(int, int), AnyStr]):
         """
-        Don't use this directly! If you plan to use Widgets, the TerminalGUI class is the better options which
-        itself then will use this method.
+        This adds a pixel dict directly to the current screen buffer. The keys must be tuples of two integers,
+        representing the x and y position and the values must AnyStr.
 
         Parameters
         ----------
-        widget : BaseWidget
+        pixels : dict
             will be added to the current screen buffer
         """
-        self._curr_screen_buf |= widget.to_pixels()
+        self._curr_screen_buf |= pixels
 
     def empty_screen_buffer(self):
         """
@@ -177,12 +179,17 @@ class TerminalScreen:
         if they weren't added to the screen buffer again
         """
         t1 = perf_counter()
+        if self._size != self.get_size():
+            x, y = self._size = self.get_size()
+            for i in range(x):
+                for j in range(y):
+                    self._last_screen_buf[(i, j)] = " "
         Console.put_pixels(
             {key: " " for (key, _) in self._last_screen_buf.items()} | self._curr_screen_buf
         )
         self._draw_time.append(perf_counter() - t1)
         if self.debug:
-            Console.set_title(f'{self.title} - draw-time: {mean(self._draw_time):.5f}sek')
+            Console.set_title(f'{self.title} - draw-time: {mean(self._draw_time):.5f}sec')
         self._last_screen_buf = self._curr_screen_buf
         self._curr_screen_buf = {}
 
@@ -194,8 +201,12 @@ class TerminalScreen:
         it is recommended to use the screen with the contextmanager:
 
         >>> with TerminalScreen("Title") as screen:
-        >>>         # main event loop
+        >>>         ... # main event loop
         >>> # the contextmanager calls quit on exit automatically
+
+        Warnings
+        --------
+        If screen.quit() is not a called before the program exists, the terminal will be unusable!
         """
         Console.set_title(self.title)
         Console.configure(
@@ -207,7 +218,7 @@ class TerminalScreen:
 
     def quit(self):
         """
-        This must be called to restore the state of the terminal!
+        This must be called to restore the normal state of the terminal!
         """
         Console.configure(
             fullscreen_mode=False,
@@ -223,3 +234,4 @@ class TerminalScreen:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.quit()
+        print("exit called")

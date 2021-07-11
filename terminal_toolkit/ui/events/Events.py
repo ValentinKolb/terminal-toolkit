@@ -9,7 +9,7 @@ Position = namedtuple("Position", "x y")
 
 
 @unique
-class ModifierKeyCodes(Enum):
+class MODIFIER_KEYS(Enum):
     ENTER = '\n'
     ESC = '\x1b'
     TAB = '\t'
@@ -77,32 +77,32 @@ class MouseEvent(Event):
 
 @dataclass(frozen=True)
 class KeyboardEvent(Event):
-    key: Union[str, ModifierKeyCodes]
+    key: Union[str, MODIFIER_KEYS]
 
 
 @dataclass(frozen=True)
 class Key(KeyboardEvent):
-    pass
+    ...
 
 
 @dataclass(frozen=True)
 class ModifierKey(KeyboardEvent):
-    pass
+    ...
 
 
 @dataclass(frozen=True)
 class Click(MouseEvent):
-    pass
+    ...
 
 
 @dataclass(frozen=True)
 class RightClick(MouseEvent):
-    pass
+    ...
 
 
 @dataclass(frozen=True)
 class MouseMove(MouseEvent):
-    pass
+    ...
 
 
 @dataclass(frozen=True)
@@ -113,17 +113,17 @@ class MouseDrag(MouseEvent):
 
 @dataclass(frozen=True)
 class MouseRightDrag(MouseDrag):
-    pass
+    ...
 
 
 @dataclass(frozen=True)
 class MouseOn(MouseEvent):
-    pass
+    ...
 
 
 @dataclass(frozen=True)
 class MouseOff(MouseEvent):
-    pass
+    ...
 
 
 @dataclass(frozen=True)
@@ -134,3 +134,8 @@ class ScrollUp(MouseEvent):
 @dataclass(frozen=True)
 class ScrollDown(MouseEvent):
     times: int
+
+
+@dataclass(frozen=True)
+class ScreenClosed(Event):
+    ...

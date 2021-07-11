@@ -1,27 +1,33 @@
 import collections
 
-from terminal_toolkit.ui.TerminalScreen import TerminalScreen
+import terminal_toolkit.ui.TerminalGUI as gui
+from terminal_toolkit.console import Console
 from terminal_toolkit.ui.events.Events import *
+from terminal_toolkit.ui.widgets.Widgtes import TextWidget, PixelWidget
 
 if __name__ == '__main__':
+    text_widget = TextWidget("text_widget")
 
-    last_mouse_positions = collections.deque(maxlen=10)
-    symbols = "*"
+    pixel_widget = PixelWidget("pixel_widget")
 
-    with TerminalScreen("TEST SCREEN", debug=True) as screen:
+    symbol = "#"
 
-        for event in screen.events():
 
-            screen.put_str((0, 0), str(event))
+    @pixel_widget.event_handler(Key)
+    def key_handler(event: Key, widget: PixelWidget):
+        global symbol
+        symbol = event.key
 
-            if isinstance(event, MouseEvent):
-                x = event.x
-                y = event.y
-                last_mouse_positions.append((x, y))
 
-            [screen.put_str((x, y), symbols) for (x, y) in last_mouse_positions]
+    @pixel_widget.event_handler(MouseDrag)
+    def move_handler(event: MouseDrag, widget: PixelWidget):
+        widget.add_pixel((event.x, event.y), symbol)
 
-            if isinstance(event, Key):
-                symbols = event.key
 
-            screen.write()
+    @pixel_widget.event_handler(ModifierKey)
+    def clear_handler(event: ModifierKey, widget: PixelWidget):
+        if event.key == MODIFIER_KEYS.BACKSPACE:
+            widget.clear()
+
+
+    gui.serve("Hello World", widget=pixel_widget, debug=True)

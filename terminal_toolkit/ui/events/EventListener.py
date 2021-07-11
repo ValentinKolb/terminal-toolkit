@@ -76,8 +76,8 @@ def parse_event(unparsed_event: str) -> Event:
         x, y = _curr_mouse_pos = parse_mouse_pos(_in=match.group("position"))
         return ScrollDown(x=x, y=y, _unparsed_data=unparsed_event, times=unparsed_event.count("\x1b"))
 
-    elif unparsed_event in ModifierKeyCodes.values():
-        return ModifierKey(key=ModifierKeyCodes(unparsed_event), _unparsed_data=unparsed_event)
+    elif unparsed_event in MODIFIER_KEYS.values():
+        return ModifierKey(key=MODIFIER_KEYS(unparsed_event), _unparsed_data=unparsed_event)
 
     elif "\x1b" not in unparsed_event and len(unparsed_event) == 1:
         return Key(key=unparsed_event, _unparsed_data=unparsed_event)

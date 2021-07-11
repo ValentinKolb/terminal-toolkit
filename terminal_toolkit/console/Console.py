@@ -19,7 +19,7 @@ def get_size() -> tuple[WIDTH, HEIGHT]:
         the size of the terminal
     """
     w, h = shutil.get_terminal_size((80, 24))
-    return w, h + 1
+    return w, h
 
 
 def set_size(size: tuple[WIDTH, HEIGHT]):
@@ -174,9 +174,11 @@ def put_pixels(pixels: dict[tuple[int, int], AnyStr], flush=True):
     flush : bool
          whether to flush stdout. the characters will not be shown until stdout has been flushed.
     """
+    width, height = get_size()
     for x, y in sorted(pixels.keys()):
-        move_cursor((x, y), flush=False)
-        sys.stdout.write(pixels[(x, y)])
+        if 0 <= x < width and 0 <= y < height:
+            move_cursor((x, y), flush=False)
+            sys.stdout.write(pixels[(x, y)])
     sys.stdout.flush() if flush else None
 
 
