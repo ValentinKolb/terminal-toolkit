@@ -1,12 +1,14 @@
 import collections
-from typing import AnyStr, Iterable, AsyncIterable
+import queue
+import threading
+from typing import AnyStr, Iterable, AsyncIterable, Optional
 from time import perf_counter
 from statistics import mean
 
 from terminal_toolkit.console import Console
 from terminal_toolkit.console.Console import WIDTH, HEIGHT
 from terminal_toolkit.ui.events import EventListener
-from terminal_toolkit.ui.events.Events import Event
+from terminal_toolkit.ui.events.Events import Event, Timeout
 
 X = int
 Y = int
@@ -44,6 +46,13 @@ class TerminalScreen:
     """
 
     def __init__(self, title: str, debug: bool = False):
+        """
+        Creates a new TerminalScreen only one TerminalScreen can be created at once
+        Parameters
+        ----------
+        title
+        debug
+        """
         self.title = title
         self.debug = debug
         self._draw_time = collections.deque(maxlen=50)
@@ -51,7 +60,7 @@ class TerminalScreen:
         self._last_screen_buf = {}
         self._size = self.get_size()
 
-    def events(self) -> Iterable[Event]:
+    def events(self, timeout: Optional[float] = None) -> Iterable[Event]:
         """
         This generator returns all events the user enters until a KeyboardInterrupt in raised
         (the user terminates the program)
@@ -62,14 +71,36 @@ class TerminalScreen:
         >>> for event in screen.events():
         >>>     # handle events here
 
+        Parameters
+        ----------
+        timeout : float
+            If the timeout value is not None, a sepperate thread will be started to listen for events.
+            The generator then only blocks for the value specified as timeout. If a timeout occurs, the "Timeout" event
+            is returned.
+
         Yields
         -------
         Events
             an event object that can be quried to get the user input
         """
         try:
-            while True:
-                yield EventListener.next_event()
+            if timeout is None:
+                while True:
+                    yield EventListener.next_event()
+            else:
+                events = queue.Queue()
+
+                def _listen():
+                    nonlocal events
+                    while True:
+                        events.put(EventListener.next_event())
+
+                threading.Thread(target=_listen, daemon=True).start()
+                while True:
+                    try:
+                        yield events.get(timeout=timeout)
+                    except queue.Empty:
+                        yield Timeout()
         except KeyboardInterrupt:
             return
 
@@ -192,6 +223,17 @@ class TerminalScreen:
             Console.set_title(f'{self.title} - draw-time: {mean(self._draw_time):.5f}sec')
         self._last_screen_buf = self._curr_screen_buf
         self._curr_screen_buf = {}
+
+    def get_avg_write_time(self) -> float:
+        """
+        Returns
+        -------
+        float :
+            returns the average time it takes to draw a frame on the screen. This time is th mean of the last 50 times the
+            write method was called
+
+        """
+        return mean(self._draw_time)
 
     def show(self):
         """

@@ -1,6 +1,6 @@
 from abc import ABC
 from dataclasses import dataclass, field
-from typing import AnyStr, final
+from typing import AnyStr, final, Callable, Any
 
 from terminal_toolkit.ui.events import Events
 from terminal_toolkit.ui.widgets.BaseClasses import BaseWidget
@@ -11,12 +11,8 @@ class Widget(BaseWidget, ABC):
 
     @final
     def handle_event(self, event: Events.Event):
-        for f in self.callbacks[type(event)]:
-            f(event, self)
-
-    @final
-    async def async_handle_event(self, event: Events.Event):
-        pass
+        for handler in self.callbacks[type(event)]:
+            handler(event)
 
 
 @dataclass

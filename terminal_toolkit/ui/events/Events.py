@@ -61,22 +61,37 @@ class MODIFIER_KEYS(Enum):
 
 @dataclass(frozen=True)
 class Event(ABC):
+    ...
+
+
+@dataclass(frozen=True)
+class ScreenClosed(Event):
+    ...
+
+
+@dataclass(frozen=True)
+class Timeout(Event):
+    ...
+
+
+@dataclass(frozen=True)
+class InputEvent(Event):
     _unparsed_data: str = field(repr=False)
 
 
 @dataclass(frozen=True)
-class UNKNOWN_EVENT(Event):
+class UNKNOWN_EVENT(InputEvent):
     data: str
 
 
 @dataclass(frozen=True)
-class MouseEvent(Event):
+class MouseEvent(InputEvent):
     x: int
     y: int
 
 
 @dataclass(frozen=True)
-class KeyboardEvent(Event):
+class KeyboardEvent(InputEvent):
     key: Union[str, MODIFIER_KEYS]
 
 
@@ -134,8 +149,3 @@ class ScrollUp(MouseEvent):
 @dataclass(frozen=True)
 class ScrollDown(MouseEvent):
     times: int
-
-
-@dataclass(frozen=True)
-class ScreenClosed(Event):
-    ...
