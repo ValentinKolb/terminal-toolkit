@@ -1,6 +1,7 @@
 import _io
 import asyncio
 import os
+import re
 import shutil
 import signal
 import sys
@@ -9,6 +10,8 @@ from typing import NewType, Union, AnyStr
 
 HEIGHT = NewType("HEIGHT", int)
 WIDTH = NewType("WIDTH", int)
+ROW = NewType("ROW", int)
+COLUMN = NewType("COLUMN", int)
 
 
 def get_size() -> tuple[WIDTH, HEIGHT]:
@@ -70,7 +73,7 @@ async def async_wait_resize() -> get_size():
 def getch(stream: _io.TextIOWrapper = sys.stdin, blocking: bool = True, decode=True) -> str:
     """
     getch() reads a single character from the keyboard. But it does not use any buffer, so the entered character is
-    immediately returned without waiting for the enter key.
+    immediately returned without waiting for the enter key. the char will not be printed to the terminal!
 
     Parameters
     ----------
@@ -112,7 +115,7 @@ def getch(stream: _io.TextIOWrapper = sys.stdin, blocking: bool = True, decode=T
 async def async_getch(decode=True, stream: _io.TextIOWrapper = sys.stdin) -> Union[str, bytes]:
     """
     getch() reads a single character from the keyboard. But it does not use any buffer, so the entered character is
-    immediately returned without waiting for the enter key.
+    immediately returned without waiting for the enter key. the char will not be printed to the terminal!
 
     Parameters
     ----------
@@ -146,7 +149,7 @@ async def async_getch(decode=True, stream: _io.TextIOWrapper = sys.stdin) -> Uni
         stream.flush()
 
 
-def move_cursor(pos: tuple[int, int], flush=True):
+def move_cursor(pos: tuple[ROW, COLUMN], flush=True):
     """
     this function moves the cursor to the specified location on the terminal screen
 
@@ -160,6 +163,123 @@ def move_cursor(pos: tuple[int, int], flush=True):
     """
     x, y = pos
     sys.stdout.write(f"\033[{y + 1};{x + 1}H")
+    sys.stdout.flush() if flush else None
+
+
+def move_cursor_right(steps: int = 1, flush: bool = True):
+    """
+    this function moves the cursor to the right on the terminal screen without printing a space
+
+    Parameters
+    ----------
+    flush : bool
+        whether to flush stdout. the cursor does not move until stdout has been flushed.
+    steps : int
+        the number of columns to move
+    """
+    sys.stdout.write(f"\033[{steps}C")
+    sys.stdout.flush() if flush else None
+
+
+def move_cursor_left(steps: int = 1, flush: bool = True):
+    """
+    this function moves the cursor to the left on the terminal screen without deleting any characters
+
+    Parameters
+    ----------
+    flush : bool
+        whether to flush stdout. the cursor does not move until stdout has been flushed.
+    steps : int
+        the number of columns to move
+    """
+    sys.stdout.write(f"\033[{steps}D")
+    sys.stdout.flush() if flush else None
+
+
+def move_cursor_up(steps: int = 1, flush: bool = True):
+    """
+        this function moves the cursor up on the terminal screen without deleting any characters
+
+        Parameters
+        ----------
+        flush : bool
+            whether to flush stdout. the cursor does not move until stdout has been flushed.
+        steps : int
+            the number of columns to move
+        """
+    sys.stdout.write(f"\033[{steps}A")
+    sys.stdout.flush() if flush else None
+
+
+def move_cursor_down(steps: int = 1, flush: bool = True):
+    """
+        this function moves the cursor down on the terminal screen without
+
+        Parameters
+        ----------
+        flush : bool
+            whether to flush stdout. the cursor does not move until stdout has been flushed.
+        steps : int
+            the number of columns to move
+        """
+    sys.stdout.write(f"\033[{steps}B")
+    sys.stdout.flush() if flush else None
+
+
+def get_cursor_pos() -> tuple[ROW, COLUMN]:
+    """
+    this function return the current position of the cursor on the terminal. to get this info it uses ansi escape
+    code and therefore writes to stdout, flushes it and reads from stdin! be aware that this can cause undefined
+    behavior if you application also uses these streams at the same time or written something to stdout without
+    flushing it
+
+    Returns
+    -------
+    tuple :
+        the row and column where the cursor is located
+    """
+    sys.stdout.write("\033[6n")
+    sys.stdout.flush()
+    while not (_in := getch()).endswith("R"):
+        pass
+    match = re.match(pattern=r".*\[(?P<row>\d+);(?P<column>\d+)R", string=_in)
+    return ROW(int(match.group("row"))), COLUMN(int(match.group("column")))
+
+
+def save_cursor_pos():
+    """
+    this save the cursor position. this position can be restored with the restore_cursor_pos function
+
+    See Also
+    --------
+    restore_cursor_pos : restores the saved position
+    """
+    sys.stdout.write("\033[s")
+    sys.stdout.flush()
+
+
+def restore_cursor_pos():
+    """
+    this functions restores the cursor pos if it was saved before with the save_cursor_pos function
+
+    See Also
+    --------
+    save_cursor_pos : saves the position to be restored with this function
+    """
+    sys.stdout.write("\033[u")
+    sys.stdout.flush()
+
+
+def erase_end_of_line(flush=True):
+    """
+    this function deletes the end of the line from the position of the cursor
+
+    Parameters
+    ----------
+    flush : bool
+        whether to flush stdout. the cursor does not move until stdout has been flushed.
+    """
+    sys.stdout.write(f"\033[K")
     sys.stdout.flush() if flush else None
 
 
