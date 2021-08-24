@@ -70,7 +70,7 @@ async def async_wait_resize() -> get_size():
     return get_size()
 
 
-def getch(stream: _io.TextIOWrapper = sys.stdin, blocking: bool = True, decode=True) -> str:
+def getch(stream: _io.TextIOWrapper = sys.stdin, blocking: bool = True, decode=True) -> Union[str, bytes]:
     """
     getch() reads a single character from the keyboard. But it does not use any buffer, so the entered character is
     immediately returned without waiting for the enter key. the char will not be printed to the terminal!
