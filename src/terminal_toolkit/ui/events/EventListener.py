@@ -1,10 +1,7 @@
-import queue
 import re
-import threading
-from typing import Tuple, Optional
+from typing import Tuple
 
-from terminal_toolkit.console import Console
-from terminal_toolkit.ui.events.Events import *
+from src.terminal_toolkit.console import Console
 
 regex_mouse_position = r'(?P<x>\d+);(?P<y>\d+)'
 regex_mouse_move = r'(?P<escape_code>\x1b\[\<)(?P<mouse_move>35;)(?P<position>\d+;\d+)(?P<end>M)'

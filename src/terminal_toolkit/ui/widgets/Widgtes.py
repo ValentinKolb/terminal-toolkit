@@ -1,9 +1,9 @@
 from abc import ABC
 from dataclasses import dataclass, field
-from typing import AnyStr, final, Callable, Any
+from typing import AnyStr, final
 
-from terminal_toolkit.ui.events import Events
-from terminal_toolkit.ui.widgets.BaseClasses import BaseWidget
+from src.terminal_toolkit.ui.events import Events
+from src.terminal_toolkit.ui.widgets.BaseClasses import BaseWidget
 
 
 @dataclass

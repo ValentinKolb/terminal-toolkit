@@ -4,10 +4,10 @@ import abc
 from abc import abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import AnyStr, Callable, DefaultDict, TypeVar, Any, Type
+from typing import AnyStr, Callable, DefaultDict, Any, Type
 
-from terminal_toolkit.style.BaseWidgetStyle import WidgetStyle
-from terminal_toolkit.ui.events import Events
+from src.terminal_toolkit.style.BaseWidgetStyle import WidgetStyle
+from src.terminal_toolkit.ui.events import Events
 
 
 @dataclass

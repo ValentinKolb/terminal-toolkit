@@ -1,9 +1,9 @@
 import sys
 
-from terminal_toolkit.mixed import ProgressIndicator
-from terminal_toolkit.ui.TerminalScreen import TerminalScreen
-from terminal_toolkit.ui.events.Events import ScreenClosed, Timeout
-from terminal_toolkit.ui.widgets.BaseClasses import BaseWidget
+from src.terminal_toolkit.mixed import ProgressIndicator
+from src.terminal_toolkit.ui.TerminalScreen import TerminalScreen
+from src.terminal_toolkit.ui.events.Events import ScreenClosed, Timeout
+from src.terminal_toolkit.ui.widgets.BaseClasses import BaseWidget
 
 
 def exit(status: int = 0):

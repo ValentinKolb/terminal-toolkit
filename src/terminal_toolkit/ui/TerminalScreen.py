@@ -5,10 +5,10 @@ from typing import AnyStr, Iterable, AsyncIterable, Optional
 from time import perf_counter
 from statistics import mean
 
-from terminal_toolkit.console import Console
-from terminal_toolkit.console.Console import WIDTH, HEIGHT
-from terminal_toolkit.ui.events import EventListener
-from terminal_toolkit.ui.events.Events import Event, Timeout
+from src.terminal_toolkit.console import Console
+from src.terminal_toolkit.console.Console import WIDTH, HEIGHT
+from src.terminal_toolkit.ui.events import EventListener
+from src.terminal_toolkit.ui.events.Events import Event, Timeout
 
 X = int
 Y = int
@@ -24,8 +24,8 @@ class TerminalScreen:
 
     This small programm will print the last pressed key at the current position of the mouse until CONTOL-C is pressed.
 
-    >>> from terminal_toolkit.ui.TerminalScreen import TerminalScreen
-    >>> from terminal_toolkit.ui.events.Events import Key
+    >>> from src.terminal_toolkit import TerminalScreen
+    >>> from src.terminal_toolkit import Key
     >>> # initialize terminal screen
     >>> with TerminalScreen("My Title") as screen:
     >>> # main event loop

@@ -1,11 +1,7 @@
-import math
 import sys
-import time
-from typing import Iterable, Callable
-from functools import reduce
+from typing import Callable
 
-import terminal_toolkit.console.Console as console
-from terminal_toolkit.ui.events.Events import MODIFIER_KEYS
+from src.terminal_toolkit.ui.events.Events import MODIFIER_KEYS
 
 
 def printf(*args, end="\n"):
@@ -32,23 +28,23 @@ def delete_printed(num_chars: int):
     num_chars : int
         the number of characters to be deleted
     """
-    width, _ = console.get_size()
-    _, cursor_col = console.get_cursor_pos()
+    width, _ = Console.get_size()
+    _, cursor_col = Console.get_cursor_pos()
 
-    console.move_cursor_left(min(cursor_col - 1, num_chars))
-    console.erase_end_of_line()
+    Console.move_cursor_left(min(cursor_col - 1, num_chars))
+    Console.erase_end_of_line()
     num_chars -= cursor_col
 
     while num_chars > 0:
-        console.set_title(f'{width=} {cursor_col=} {num_chars=}')
-        console.getch()
+        Console.set_title(f'{width=} {cursor_col=} {num_chars=}')
+        Console.getch()
 
-        console.move_cursor_up()
+        Console.move_cursor_up()
         if width > num_chars:
-            console.move_cursor_right(width - num_chars - 1)
+            Console.move_cursor_right(width - num_chars - 1)
         num_chars -= width
-        console.erase_end_of_line()
-    console.set_title(f'{width=} {cursor_col=} {num_chars=}')
+        Console.erase_end_of_line()
+    Console.set_title(f'{width=} {cursor_col=} {num_chars=}')
 
 
 def read(prompt: str, default: str = None, hide_input: bool = False, allowed_options: list = None):
@@ -59,14 +55,14 @@ def read(prompt: str, default: str = None, hide_input: bool = False, allowed_opt
     else:
         print(f'{prompt}', end=" : ")
 
-    _in = console.getch()
+    _in = Console.getch()
     if _in == "\n":
         printf(f"\r{prompt} : {default}")
         return default
     else:
 
         printf(f"\r{prompt}", end=" : ")
-        while not (char := console.getch()) == "\n":
+        while not (char := Console.getch()) == "\n":
             printf(char, end="")
             _in += char
 
@@ -74,13 +70,13 @@ def read(prompt: str, default: str = None, hide_input: bool = False, allowed_opt
 
 
 def suggest(suggestion: str) -> Callable:
-    row_1, col_1 = console.get_cursor_pos()
+    row_1, col_1 = Console.get_cursor_pos()
     sys.stdout.write(suggestion)
-    row_2, col_2 = console.get_cursor_pos()
+    row_2, col_2 = Console.get_cursor_pos()
     if i := row_2 - row_1:
-        console.move_cursor_up(steps=i)
+        Console.move_cursor_up(steps=i)
     if i := col_2 - col_1:
-        console.move_cursor_left(steps=i)
+        Console.move_cursor_left(steps=i)
 
 
 def common_start(*strings):
@@ -101,7 +97,7 @@ def common_start(*strings):
 
 def prompt(msg: str, options: dict):
     sys.stdout.write(msg)
-    s = _prompt(options, console.getch())
+    s = _prompt(options, Console.getch())
     return s.strip()
 
 
@@ -117,7 +113,7 @@ def _prompt(options: dict, _in: str) -> str:
     suggestion = common_start(*possible_suggestions)
 
     suggest(suggestion)
-    char = console.getch(decode=False)
+    char = Console.getch(decode=False)
     delete_printed(len(suggestion))
 
     if char in MODIFIER_KEYS.values():
