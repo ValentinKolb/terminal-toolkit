@@ -1,3 +1,5 @@
+import os
+
 import setuptools
 
 with open("README.md", "r", encoding="utf-8") as fh:
@@ -10,10 +12,16 @@ setuptools.setup(
     description="Small library for writing terminal app's",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    package_dir="src",
     url='https://github.com/ValentinKolb/terminal-toolkit',
     license='MIT',
-    packages=['terminal-toolkit'],
+
+    packages=setuptools.find_packages(
+        where='src',
+        include=['*'],
+        exclude=[],
+    ),
+    package_dir={"": "src"},
+
     python_requires=">=3.9",
     platforms="unix, linux, osx",
     install_requires=[
