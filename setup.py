@@ -6,7 +6,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name='terminal-toolkit',
+    name='terminal_toolkit',
     version='0.0.1',
     author='Valentin Kolb',
     description="Small library for writing terminal app's",
