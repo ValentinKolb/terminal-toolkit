@@ -15,17 +15,17 @@ setuptools.setup(
     url='https://github.com/ValentinKolb/terminal-toolkit',
     license='MIT',
 
-    # packages=["terminal_toolkit",
-    #          "terminal_toolkit.console",
-    #          "terminal_toolkit.mixed",
-    #          "terminal_toolkit.style",
-    #          "terminal_toolkit.ui",
-    #          "terminal_toolkit.ui.events",
-    #          "terminal_toolkit.ui.widgets"],
+    packages=["terminal_toolkit",
+              "terminal_toolkit.console",
+              "terminal_toolkit.mixed",
+              "terminal_toolkit.style",
+              "terminal_toolkit.ui",
+              "terminal_toolkit.ui.events",
+              "terminal_toolkit.ui.widgets"],
 
-    package_data={'terminal_toolkit': ['src/**/*']},
+    # package_data={'terminal_toolkit': ['src/**/*']},
 
-    # package_dir="src",
+    package_dir="src",
 
     python_requires=">=3.9",
     platforms="unix",
