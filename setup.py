@@ -25,7 +25,7 @@ setuptools.setup(
     package_dir="src",
 
     python_requires=">=3.9",
-    platforms="unix, linux, osx",
+    platforms="unix",
     install_requires=[
         'dacite==1.6.0',
         'webcolors==1.11.1'
