@@ -16,11 +16,11 @@ setuptools.setup(
     license='MIT',
 
     packages=setuptools.find_packages(
-        where='src',
+        where='src/terminal_toolkit',
         include=['*'],
         exclude=[],
     ),
-    package_dir={"": "src"},
+    package_dir={"": "src/terminal_toolkit"},
 
     python_requires=">=3.9",
     platforms="unix, linux, osx",
