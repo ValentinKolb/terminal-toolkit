@@ -3,17 +3,34 @@ import queue
 import threading
 from statistics import mean
 from time import perf_counter
-from typing import Iterable, AsyncIterable, Optional
+from typing import Optional, Generator, AsyncGenerator
 
 from terminal import *
-from terminal import Events
 from terminal import WIDTH, HEIGHT
-from terminal.Events import Event, Timeout, ScreenClosed
-from terminal.GuiWidgets import BaseWidget
-from terminal.ProgressIndicator import Wheel
+from terminal import events
+from terminal.events import Event, Timeout, next_event, ScreenClosed
 
 X = int
 Y = int
+
+
+class StatusWheel:
+    """this class produces a small progress wheel.
+    usage: make an instance of this object.
+    every time __str__ is called on this object the next symbol is returned """
+
+    def __init__(self):
+        self.num = 0
+        self.__symbols__ = {
+            0: "[|]",
+            1: "[/]",
+            2: "[-]",
+            3: "[\\]"
+        }
+
+    def __str__(self) -> str:
+        self.num += 1
+        return self.__symbols__[self.num % 4]
 
 
 class TerminalScreen:
@@ -26,8 +43,8 @@ class TerminalScreen:
 
     This small programm will print the last pressed key at the current position of the mouse until CONTOL-C is pressed.
 
-    >>> from terminal.TerminalGUI import TerminalScreen
-    >>> from terminal.Events import Key
+    >>> from terminal.ui import TerminalScreen
+    >>> from terminal.events import Key
     >>> # initialize terminal screen
     >>> with TerminalScreen("My Title") as screen:
     >>> # main event loop
@@ -62,10 +79,11 @@ class TerminalScreen:
         self._last_screen_buf = {}
         self._size = self.get_size()
 
-    def events(self, timeout: Optional[float] = None) -> Iterable[Event]:
+    def events(self, timeout: Optional[float] = None) -> Generator[Event, None, None]:
         """
         This generator returns all events the user enters until a KeyboardInterrupt in raised
         (the user terminates the program)
+        If the user terminates the programm the ScreenClosed Event will be returned
 
         Usage
         -----
@@ -88,14 +106,14 @@ class TerminalScreen:
         try:
             if timeout is None:
                 while True:
-                    yield Events.next_event()
+                    yield next_event()
             else:
                 events = queue.Queue()
 
                 def _listen():
                     nonlocal events
                     while True:
-                        events.put(Events.next_event())
+                        events.put(next_event())
 
                 threading.Thread(target=_listen, daemon=True).start()
                 while True:
@@ -104,12 +122,13 @@ class TerminalScreen:
                     except queue.Empty:
                         yield Timeout()
         except KeyboardInterrupt:
-            return
+            yield ScreenClosed()
 
-    async def async_events(self) -> AsyncIterable[Event]:
+    async def async_events(self) -> AsyncGenerator[Event, None]:
         """
         This generator returns all events the user enters until a KeyboardInterrupt in raised
         (the user terminates the program)
+        If the user terminates the programm the ScreenClosed Event will be returned
 
         Usage
         -----
@@ -124,9 +143,9 @@ class TerminalScreen:
         """
         try:
             while True:
-                yield await Events.async_next_event()
+                yield await events.async_next_event()
         except KeyboardInterrupt:
-            return
+            yield ScreenClosed()
 
     def get_mouse_pos(self) -> tuple[X, Y]:
         """
@@ -137,7 +156,7 @@ class TerminalScreen:
         tuple:
             the x and y position of the mouse
         """
-        return Events.get_curr_mouse_pos()
+        return events.get_curr_mouse_pos()
 
     def get_size(self) -> tuple[WIDTH, HEIGHT]:
         """
@@ -278,37 +297,3 @@ class TerminalScreen:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.quit()
-        print("exit called")
-
-
-def exit(status: int = 0):
-    """
-    quits the gui and exits the program
-
-    Parameters
-    ----------
-    status : int
-        the exit code of the program
-    """
-    sys.exit(status)
-
-
-def mainloop(title: str, widget: BaseWidget, framerate: float = .1, debug: bool = False):
-    last_event = None
-    wheel = Wheel()
-    with TerminalScreen(title) as screen:
-        screen.put_pixels(widget.to_pixels(screen.get_size(), screen.get_size()))
-        screen.write()
-        for event in screen.events(timeout=framerate):
-            widget.handle_event(event)
-            screen.put_pixels(widget.to_pixels(screen.get_size(), screen.get_size()))
-            if debug:
-                last_event = event if not isinstance(event, Timeout) else last_event
-                x, y = screen.get_size()
-                screen.put_str((0, y - 1),
-                               f'{str(wheel)} size={(x, y)} avg_draw_time={(screen.get_avg_write_time() * 1000):.3f}ms '
-                               f'{last_event=}'
-                               f'{" [Timeout]" if isinstance(event, Timeout) else ""}')
-
-            screen.write()
-        widget.handle_event(ScreenClosed())
