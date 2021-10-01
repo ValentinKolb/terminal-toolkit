@@ -5,8 +5,8 @@ from statistics import mean
 from time import perf_counter
 from typing import Iterable, AsyncIterable, Optional
 
-import Events
 from terminal import *
+from terminal import Events
 from terminal import WIDTH, HEIGHT
 from terminal.Events import Event, Timeout, ScreenClosed
 from terminal.GuiWidgets import BaseWidget

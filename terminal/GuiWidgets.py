@@ -6,7 +6,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import AnyStr, Callable, DefaultDict, Any, Type, final
 from terminal.Events import Event
-from Styles import WidgetStyle
+from terminal.Styles import WidgetStyle
 
 
 @dataclass
