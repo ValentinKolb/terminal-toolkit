@@ -3,7 +3,7 @@ from __future__ import annotations
 import colorsys
 import re
 from dataclasses import dataclass, field
-from typing import Literal, Optional, Iterator, Generator
+from typing import Literal, Optional, Generator
 from typing import NamedTuple, TypeVar
 from typing import Union
 
@@ -354,8 +354,8 @@ class FormatStr:
         s :
         """
 
-        s = s.replace("{nocolor}", XTerm256NoColor)
         if isinstance(s, str):
+            s = s.replace("{nocolor}", XTerm256NoColor)
             pattern = r"{(?P<color>\S+?):(?P<mode>(c|bg))}"
             while match := re.search(pattern, s):
                 color = get_color(match.group("color"))
