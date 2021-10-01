@@ -543,6 +543,18 @@ class FormatStr:
         """
         return re.sub(_regex_escape_code, "", self.s, 0)
 
+    def __iter__(self) -> Generator[str, None, None]:
+        """
+        splits a string into individual characters. this method special escape characters aware
+
+        Returns
+        -------
+        Iterator:
+            an Generator yielding all characters
+        """
+        for match in re.finditer(_regex_escape_code_char, self.s):
+            yield self.s[match.start():match.end()]
+
     def to_words(self) -> Generator[FormatStr, None, None]:
         """
         splits a string into individual words. this method special escape characters aware
@@ -552,7 +564,5 @@ class FormatStr:
         Iterator:
             an Generator yielding all words
         """
-        s = self.s
-        while match := re.search(_regex_escape_code_word, s):
-            yield FormatStr(str(s[match.start():match.end()]))
-            s = re.sub(_regex_escape_code_word, "", s, count=1)
+        for match in re.finditer(_regex_escape_code_word, self.s):
+            yield FormatStr(self.s[match.start():match.end()])

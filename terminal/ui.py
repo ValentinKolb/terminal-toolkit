@@ -9,6 +9,7 @@ from terminal import *
 from terminal import WIDTH, HEIGHT
 from terminal import events
 from terminal.events import Event, Timeout, next_event, ScreenClosed
+from terminal.styles import FormatStr
 
 X = int
 Y = int
@@ -171,7 +172,7 @@ class TerminalScreen:
         """
         return get_size()
 
-    def put_str(self, pos: tuple[X, Y], s: AnyStr):
+    def put_str(self, pos: tuple[X, Y], s: Union[AnyStr, FormatStr]):
         """
         This method adds the string to the current screen buffer at the specified location. To make this string
         (and everything else in the screen buffer) show up, the write() method must be invoked
@@ -191,8 +192,10 @@ class TerminalScreen:
         """
         x, y = pos
         for c in s:
+            # print("putting", c.encode())
             self._curr_screen_buf[(x, y)] = c
             x += 1
+        # sleep(10)
 
     def put_pixels(self, pixels: dict[(int, int), AnyStr]):
         """
