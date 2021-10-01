@@ -21,7 +21,7 @@ This is a lightweight library for writing graphical command line user interfaces
 # Install
 
 ```shell
-pip install git+https://github.com/ValentinKolb/terminal-toolkit.git#egg=terminal_toolkit
+pip install git+https://github.com/ValentinKolb/terminal-toolkit.git#egg=terminal
 ```
 
 # Usage

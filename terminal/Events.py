@@ -1,7 +1,10 @@
-import re
+from abc import ABC
+from collections import namedtuple
+from dataclasses import dataclass, field
+from enum import unique, Enum
 from typing import Tuple
 
-from src.terminal_toolkit.console import Console
+from terminal import *
 
 regex_mouse_position = r'(?P<x>\d+);(?P<y>\d+)'
 regex_mouse_move = r'(?P<escape_code>\x1b\[\<)(?P<mouse_move>35;)(?P<position>\d+;\d+)(?P<end>M)'
@@ -14,17 +17,162 @@ regex_scroll_down = r'(?P<escape_code>\x1b\[\<)(?P<scroll_down>64;)(?P<position>
 
 _curr_mouse_pos = (0, 0)
 
+Position = namedtuple("Position", "x y")
+
+
+@unique
+class MODIFIER_KEYS(Enum):
+    ENTER = '\n'
+    ESC = '\x1b'
+    TAB = '\t'
+    REVERSE_TAB = '\x1b[Z'
+    BACKSPACE = '\x7f'
+    DELETE = '\x1b[3~'
+    UP_ARROW = '\x1b[A'
+    DOWN_ARROW = '\x1b[B'
+    RIGHT_ARROW = '\x1b[C'
+    LEFT_ARROW = '\x1b[D'
+    OPTION_LEFT = '\x1bb'
+    OPTION_RIGHT = '\x1bf'
+    CONTROL_X = '\x18'
+    CONTROL_V = '\x16'
+    CONTROL_B = '\x02'
+    CONTROL_N = '\x0e'
+    CONTROL_A = '\x01'
+    CONTROL_D = '\x04'
+    CONTROL_F = '\x06'
+    CONTROL_G = '\x07'
+    CONTROL_H = '\x08'
+    CONTROL_K = '\x0b'
+    CONTROL_L = '\x0c'
+    CONTROL_W = '\x17'
+    CONTROL_E = '\x05'
+    CONTROL_R = '\x12'
+    CONTROL_T = '\x14'
+    CONTROL_U = '\x15'
+    CONTROL_P = '\x10'
+    F1 = '\x1bOP'
+    F2 = '\x1bOQ'
+    F3 = '\x1bOR'
+    F4 = '\x1bOS'
+    F5 = '\x1b[15~'
+    F6 = '\x1b[17~'
+    F7 = '\x1b[18~'
+    F8 = '\x1b[19~'
+    F9 = '\x1b[20~'
+    F10 = '\x1b[21~'
+
+    @classmethod
+    def values(cls):
+        return [enum.value for enum in cls]
+
+    @classmethod
+    def names(cls):
+        return [enum.name for enum in cls]
+
+
+@dataclass(frozen=True)
+class Event(ABC):
+    ...
+
+
+@dataclass(frozen=True)
+class ScreenClosed(Event):
+    ...
+
+
+@dataclass(frozen=True)
+class Timeout(Event):
+    ...
+
+
+@dataclass(frozen=True)
+class InputEvent(Event):
+    _unparsed_data: str = field(repr=False)
+
+
+@dataclass(frozen=True)
+class UNKNOWN_EVENT(InputEvent):
+    data: str
+
+
+@dataclass(frozen=True)
+class MouseEvent(InputEvent):
+    x: int
+    y: int
+
+
+@dataclass(frozen=True)
+class KeyboardEvent(InputEvent):
+    key: Union[str, MODIFIER_KEYS]
+
+
+@dataclass(frozen=True)
+class Key(KeyboardEvent):
+    ...
+
+
+@dataclass(frozen=True)
+class ModifierKey(KeyboardEvent):
+    ...
+
+
+@dataclass(frozen=True)
+class Click(MouseEvent):
+    ...
+
+
+@dataclass(frozen=True)
+class RightClick(MouseEvent):
+    ...
+
+
+@dataclass(frozen=True)
+class MouseMove(MouseEvent):
+    ...
+
+
+@dataclass(frozen=True)
+class MouseDrag(MouseEvent):
+    from_x: int
+    from_y: int
+
+
+@dataclass(frozen=True)
+class MouseRightDrag(MouseDrag):
+    ...
+
+
+@dataclass(frozen=True)
+class MouseOn(MouseEvent):
+    ...
+
+
+@dataclass(frozen=True)
+class MouseOff(MouseEvent):
+    ...
+
+
+@dataclass(frozen=True)
+class ScrollUp(MouseEvent):
+    times: int
+
+
+@dataclass(frozen=True)
+class ScrollDown(MouseEvent):
+    times: int
+
 
 def get_curr_mouse_pos() -> tuple[int, int]:
     return _curr_mouse_pos
 
 
 async def async_next_event() -> Event:
-    return parse_event(await Console.async_getch())
+    return parse_event(await async_getch())
 
 
 def next_event() -> Event:
-    return parse_event(Console.getch())
+    return parse_event(getch())
 
 
 def parse_mouse_pos(_in: str) -> Tuple[int, int]:

@@ -1,7 +1,7 @@
-import sys
 from typing import Callable
 
-from src.terminal_toolkit.ui.events.Events import MODIFIER_KEYS
+from terminal.Events import MODIFIER_KEYS
+from terminal import *
 
 
 def printf(*args, end="\n"):
@@ -28,23 +28,23 @@ def delete_printed(num_chars: int):
     num_chars : int
         the number of characters to be deleted
     """
-    width, _ = Console.get_size()
-    _, cursor_col = Console.get_cursor_pos()
+    width, _ = get_size()
+    _, cursor_col = get_cursor_pos()
 
-    Console.move_cursor_left(min(cursor_col - 1, num_chars))
-    Console.erase_end_of_line()
+    move_cursor_left(min(cursor_col - 1, num_chars))
+    erase_end_of_line()
     num_chars -= cursor_col
 
     while num_chars > 0:
-        Console.set_title(f'{width=} {cursor_col=} {num_chars=}')
-        Console.getch()
+        set_title(f'{width=} {cursor_col=} {num_chars=}')
+        getch()
 
-        Console.move_cursor_up()
+        move_cursor_up()
         if width > num_chars:
-            Console.move_cursor_right(width - num_chars - 1)
+            move_cursor_right(width - num_chars - 1)
         num_chars -= width
-        Console.erase_end_of_line()
-    Console.set_title(f'{width=} {cursor_col=} {num_chars=}')
+        erase_end_of_line()
+    set_title(f'{width=} {cursor_col=} {num_chars=}')
 
 
 def read(prompt: str, default: str = None, hide_input: bool = False, allowed_options: list = None):
@@ -55,14 +55,14 @@ def read(prompt: str, default: str = None, hide_input: bool = False, allowed_opt
     else:
         print(f'{prompt}', end=" : ")
 
-    _in = Console.getch()
+    _in = getch()
     if _in == "\n":
         printf(f"\r{prompt} : {default}")
         return default
     else:
 
         printf(f"\r{prompt}", end=" : ")
-        while not (char := Console.getch()) == "\n":
+        while not (char := getch()) == "\n":
             printf(char, end="")
             _in += char
 
@@ -70,13 +70,13 @@ def read(prompt: str, default: str = None, hide_input: bool = False, allowed_opt
 
 
 def suggest(suggestion: str) -> Callable:
-    row_1, col_1 = Console.get_cursor_pos()
+    row_1, col_1 = get_cursor_pos()
     sys.stdout.write(suggestion)
-    row_2, col_2 = Console.get_cursor_pos()
+    row_2, col_2 = get_cursor_pos()
     if i := row_2 - row_1:
-        Console.move_cursor_up(steps=i)
+        move_cursor_up(steps=i)
     if i := col_2 - col_1:
-        Console.move_cursor_left(steps=i)
+        move_cursor_left(steps=i)
 
 
 def common_start(*strings):
@@ -97,7 +97,7 @@ def common_start(*strings):
 
 def prompt(msg: str, options: dict):
     sys.stdout.write(msg)
-    s = _prompt(options, Console.getch())
+    s = _prompt(options, getch())
     return s.strip()
 
 
@@ -113,7 +113,7 @@ def _prompt(options: dict, _in: str) -> str:
     suggestion = common_start(*possible_suggestions)
 
     suggest(suggestion)
-    char = Console.getch(decode=False)
+    char = getch(decode=False)
     delete_printed(len(suggestion))
 
     if char in MODIFIER_KEYS.values():

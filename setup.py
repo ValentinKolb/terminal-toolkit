@@ -1,12 +1,10 @@
-import os
-
 import setuptools
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name='terminal_toolkit',
+    name='terminal',
     version='0.0.1',
     author='Valentin Kolb',
     description="Small library for writing terminal app's",
@@ -15,19 +13,13 @@ setuptools.setup(
     url='https://github.com/ValentinKolb/terminal-toolkit',
     license='MIT',
 
-    # packages=["terminal_toolkit",
-    #          "terminal_toolkit.console",
-    #          "terminal_toolkit.mixed",
-    #          "terminal_toolkit.style",
-    #          "terminal_toolkit.ui",
-    #          "terminal_toolkit.ui.events",
-    #          "terminal_toolkit.ui.widgets"],
+    packages=["terminal"],
 
-    # package_data={'terminal_toolkit': ['src/**/*']},
+    # package_data={'terminal': ['src/**/*']},
 
-    package_dir="src",
+    # package_dir="src",
 
-    packages=setuptools.find_packages(),
+    # packages=setuptools.find_packages(),
 
     python_requires=">=3.9",
     platforms="unix",

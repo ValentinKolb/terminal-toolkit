@@ -1,14 +1,16 @@
 import collections
 import queue
 import threading
-from typing import AnyStr, Iterable, AsyncIterable, Optional
-from time import perf_counter
 from statistics import mean
+from time import perf_counter
+from typing import Iterable, AsyncIterable, Optional
 
-from src.terminal_toolkit.console import Console
-from src.terminal_toolkit.console.Console import WIDTH, HEIGHT
-from src.terminal_toolkit.ui.events import EventListener
-from src.terminal_toolkit.ui.events.Events import Event, Timeout
+import Events
+from terminal import *
+from terminal import WIDTH, HEIGHT
+from terminal.Events import Event, Timeout, ScreenClosed
+from terminal.GuiWidgets import BaseWidget
+from terminal.ProgressIndicator import Wheel
 
 X = int
 Y = int
@@ -24,8 +26,8 @@ class TerminalScreen:
 
     This small programm will print the last pressed key at the current position of the mouse until CONTOL-C is pressed.
 
-    >>> from src.terminal_toolkit import TerminalScreen
-    >>> from src.terminal_toolkit import Key
+    >>> from terminal.TerminalGUI import TerminalScreen
+    >>> from terminal.Events import Key
     >>> # initialize terminal screen
     >>> with TerminalScreen("My Title") as screen:
     >>> # main event loop
@@ -86,14 +88,14 @@ class TerminalScreen:
         try:
             if timeout is None:
                 while True:
-                    yield EventListener.next_event()
+                    yield Events.next_event()
             else:
                 events = queue.Queue()
 
                 def _listen():
                     nonlocal events
                     while True:
-                        events.put(EventListener.next_event())
+                        events.put(Events.next_event())
 
                 threading.Thread(target=_listen, daemon=True).start()
                 while True:
@@ -122,7 +124,7 @@ class TerminalScreen:
         """
         try:
             while True:
-                yield await EventListener.async_next_event()
+                yield await Events.async_next_event()
         except KeyboardInterrupt:
             return
 
@@ -135,7 +137,7 @@ class TerminalScreen:
         tuple:
             the x and y position of the mouse
         """
-        return EventListener.get_curr_mouse_pos()
+        return Events.get_curr_mouse_pos()
 
     def get_size(self) -> tuple[WIDTH, HEIGHT]:
         """
@@ -148,7 +150,7 @@ class TerminalScreen:
         tuple:
             the width and height of the terminal
         """
-        return Console.get_size()
+        return get_size()
 
     def put_str(self, pos: tuple[X, Y], s: AnyStr):
         """
@@ -197,11 +199,11 @@ class TerminalScreen:
         This method removes all pixels currently displayed on the screen. This does not affect the current screen buffer.
         """
         t1 = perf_counter()
-        Console.put_pixels(
+        put_pixels(
             {key: " " for (key, _) in self._last_screen_buf.items()}
         )
         if self.debug:
-            Console.set_title(f'{self.title} - draw-time: {mean(self._draw_time):.5f}sek')
+            set_title(f'{self.title} - draw-time: {mean(self._draw_time):.5f}sek')
         self._last_screen_buf = {}
 
     def write(self):
@@ -215,12 +217,12 @@ class TerminalScreen:
             for i in range(x):
                 for j in range(y):
                     self._last_screen_buf[(i, j)] = " "
-        Console.put_pixels(
+        put_pixels(
             {key: " " for (key, _) in self._last_screen_buf.items()} | self._curr_screen_buf
         )
         self._draw_time.append(perf_counter() - t1)
         if self.debug:
-            Console.set_title(f'{self.title} - draw-time: {mean(self._draw_time):.5f}sec')
+            set_title(f'{self.title} - draw-time: {mean(self._draw_time):.5f}sec')
         self._last_screen_buf = self._curr_screen_buf
         self._curr_screen_buf = {}
 
@@ -250,8 +252,8 @@ class TerminalScreen:
         --------
         If screen.quit() is not a called before the program exists, the terminal will be unusable!
         """
-        Console.set_title(self.title)
-        Console.configure(
+        set_title(self.title)
+        configure(
             fullscreen_mode=True,
             console_echo=False,
             show_cursor=False,
@@ -262,13 +264,13 @@ class TerminalScreen:
         """
         This must be called to restore the normal state of the terminal!
         """
-        Console.configure(
+        configure(
             fullscreen_mode=False,
             console_echo=True,
             show_cursor=True,
             mouse_movement_reporting=False
         )
-        Console.set_title("")
+        set_title("")
 
     def __enter__(self):
         self.show()
@@ -277,3 +279,36 @@ class TerminalScreen:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.quit()
         print("exit called")
+
+
+def exit(status: int = 0):
+    """
+    quits the gui and exits the program
+
+    Parameters
+    ----------
+    status : int
+        the exit code of the program
+    """
+    sys.exit(status)
+
+
+def mainloop(title: str, widget: BaseWidget, framerate: float = .1, debug: bool = False):
+    last_event = None
+    wheel = Wheel()
+    with TerminalScreen(title) as screen:
+        screen.put_pixels(widget.to_pixels(screen.get_size(), screen.get_size()))
+        screen.write()
+        for event in screen.events(timeout=framerate):
+            widget.handle_event(event)
+            screen.put_pixels(widget.to_pixels(screen.get_size(), screen.get_size()))
+            if debug:
+                last_event = event if not isinstance(event, Timeout) else last_event
+                x, y = screen.get_size()
+                screen.put_str((0, y - 1),
+                               f'{str(wheel)} size={(x, y)} avg_draw_time={(screen.get_avg_write_time() * 1000):.3f}ms '
+                               f'{last_event=}'
+                               f'{" [Timeout]" if isinstance(event, Timeout) else ""}')
+
+            screen.write()
+        widget.handle_event(ScreenClosed())
