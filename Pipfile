@@ -5,7 +5,6 @@ name = "pypi"
 
 [packages]
 webcolors = "*"
-dacite = "*"
 
 [dev-packages]
 

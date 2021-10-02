@@ -21,7 +21,7 @@ _regex_hexColor = r'(?P<hex>#[0-9a-fA-F]+)'
 ##
 # regx strings used for escaped strings
 ##
-_regex_escape_code: str = r"(\u001b\[\d+(;\d+){0,2}m)?"
+_regex_escape_code: str = r"(\u001b\[\d+(;\d+){0,2}m)*"
 _regex_escape_code_char: str = "(" + _regex_escape_code + r"(\S)" + _regex_escape_code + r")|(\s)"
 _regex_escape_code_word: str = _regex_escape_code + r"(\S+)" + _regex_escape_code
 
@@ -346,17 +346,19 @@ class FormatStr:
 
         Examples
         --------
-        >>> s = FormatStr("{red:c}Red Color{nocolor}{rgb(0,0,255):bg}Blue Background")
+        >>> s = FormatStr("{red:c}Red Color{nocolor}{rgb(0, 0, 255):bg}Blue Background")
         >>> print(s)
 
         Parameters
         ----------
-        s :
+        s : str
+            the string to be comverted to a FormatStr
         """
-
         if isinstance(s, str):
             s = s.replace("{nocolor}", XTerm256NoColor)
-            pattern = r"{(?P<color>\S+?):(?P<mode>(c|bg))}"
+            pattern = r"{(?P<color>((\w+?)|" \
+                      f'{_regex_hexColor}|{_regex_cmykColor}|{_regex_hslColor}|{_regex_rgbColor}' \
+                      r")):(?P<mode>(c|bg))}"
             while match := re.search(pattern, s):
                 color = get_color(match.group("color"))
                 s = re.sub(pattern,

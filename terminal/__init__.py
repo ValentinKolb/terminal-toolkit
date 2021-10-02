@@ -8,10 +8,10 @@ import sys
 import termios
 from typing import NewType, Union, AnyStr
 
-HEIGHT = NewType("HEIGHT", int)
-WIDTH = NewType("WIDTH", int)
-ROW = NewType("ROW", int)
-COLUMN = NewType("COLUMN", int)
+HEIGHT = int
+WIDTH = int
+ROW = int
+COLUMN = int
 
 
 def get_size() -> tuple[WIDTH, HEIGHT]:
@@ -295,7 +295,7 @@ def put_pixels(pixels: dict[tuple[int, int], AnyStr], flush=True):
          whether to flush stdout. the characters will not be shown until stdout has been flushed.
     """
     width, height = get_size()
-    for x, y in sorted(pixels.keys()):
+    for x, y in sorted(pixels.keys(), key=lambda t: t[1]):
         if 0 <= x < width and 0 <= y < height:
             move_cursor((x, y), flush=False)
             sys.stdout.write(pixels[(x, y)])

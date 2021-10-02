@@ -192,10 +192,8 @@ class TerminalScreen:
         """
         x, y = pos
         for c in s:
-            # print("putting", c.encode())
             self._curr_screen_buf[(x, y)] = c
             x += 1
-        # sleep(10)
 
     def put_pixels(self, pixels: dict[(int, int), AnyStr]):
         """
