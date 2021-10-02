@@ -50,30 +50,6 @@ def _clamp(x: T, minimum: T = 0, maximum: T = 1) -> T:
 # which then can be converted into any other color format (e.g hsl, hex, ..)
 ##
 
-def _color_to_rgb(color: str) -> RGB:
-    color = color.strip().lower()
-    if rgb := re.match(_regex_rgbColor, color):
-        r, g, b = int(rgb.group("red")), int(rgb.group("green")), int(rgb.group("blue"))
-    elif hsl := re.match(_regex_hslColor, color):
-        r, g, b = _hsl_to_rgb((int(hsl.group("hue")),
-                               int(hsl.group("saturation")),
-                               int(hsl.group("lightness"))))
-    elif _hex := re.match(_regex_hexColor, color):
-        r, g, b = webcolors.hex_to_rgb(_hex.group("hex"))
-    elif cmyk := re.match(_regex_cmykColor, color):
-        r, g, b = _cmyk_to_rgb((int(cmyk.group("cyan")),
-                                int(cmyk.group("magenta")),
-                                int(cmyk.group("yellow")),
-                                int(cmyk.group("key"))))
-
-    else:
-        try:
-            r, g, b = webcolors.name_to_rgb(color)
-        except ValueError as e:
-            r, g, b = 255, 255, 255
-
-    return r, g, b
-
 
 def _rgb_to_xterm_256(rgb: RGB) -> int:
     r, g, b = rgb
@@ -126,6 +102,111 @@ def _hsl_to_rgb(hsl: HSL) -> RGB:
 
 
 ##
+# color functions
+##
+
+def color(color_value: str) -> XTerm256Color:
+    """
+    This function takes a string containing color information or rgb values and turns that into a xterm color.
+    This color object can then be used to color the output to the terminal.
+
+    Supported Color Formats
+    -----------------------
+        - the name of the color e.g. 'white', 'orange', ...
+        - rgb(red,green,blue) e.g. rgb(255,255,255)
+        - hsl(hue,saturation,luminance) e.g. hsl(1,2,3)
+        - cmyk(cyan,magenta,yellow,key) e.g. cmyk(1,2,3,4)
+        - hex e.g. #ffffff
+
+    Usage
+    -----
+    >>> white = color("#ffffff")
+    >>> black = color("black")
+    >>> print(white.X_TERM +
+    ...         black.X_TERM_BACKGROUND +
+    ...         "this is white text on a black background" +
+    ...         XTerm256NoColor)
+
+    Parameters
+    ----------
+    color_value : str or RGB
+        this either must be a tuple containing rgb values or a string with color information.
+
+    See Also
+    --------
+    foreground_color : returns a string that can be used to color the text (the foreground)
+    background_color : returns a string that can be used to color the background
+    lighten_color : returns the next brighter shade for the given color
+    darken_color: returns the next darker shade for the given color
+    all_color_shades : return all possible shades for the given color
+
+    Raises
+    ------
+    ValueError :
+        if the color can't be converted
+
+    Returns
+    -------
+    XTerm256Color :
+        a color that stored the color information.
+    """
+
+    color_value = color_value.strip().lower()
+    if rgb_match := re.match(_regex_rgbColor, color_value):
+        r, g, b = int(rgb_match.group("red")), \
+                  int(rgb_match.group("green")), \
+                  int(rgb_match.group("blue"))
+    elif hsl_match := re.match(_regex_hslColor, color_value):
+        r, g, b = _hsl_to_rgb((int(hsl_match.group("hue")),
+                               int(hsl_match.group("saturation")),
+                               int(hsl_match.group("lightness"))))
+    elif hex_match := re.match(_regex_hexColor, color_value):
+        r, g, b = webcolors.hex_to_rgb(hex_match.group("hex"))
+    elif cmyk_match := re.match(_regex_cmykColor, color_value):
+        r, g, b = _cmyk_to_rgb((int(cmyk_match.group("cyan")),
+                                int(cmyk_match.group("magenta")),
+                                int(cmyk_match.group("yellow")),
+                                int(cmyk_match.group("key"))))
+
+    else:
+        try:
+            r, g, b = webcolors.name_to_rgb(color_value)
+        except ValueError as _:
+            raise ValueError(f'unable to convert color for value: {color_value}')
+
+    return rgb(r, g, b)
+
+
+def rgb(red: int, green: int, blue: int) -> XTerm256Color:
+    try:
+        name = webcolors.rgb_to_name((red, green, blue))
+    except ValueError:
+        name = "not defined"
+
+    return XTerm256Color(
+        RGB=RGB(red, green, blue),
+        HEX=HEX(webcolors.rgb_to_hex((red, green, blue))),
+        HSL=HSL(*_rgb_to_hsl((red, green, blue))),
+        CMYK=CMYK(*_rgb_to_cmyk((red, green, blue))),
+        NAME=name,
+        X_TERM=f"\u001b[38;5;{_rgb_to_xterm_256((red, green, blue))}m",
+        X_TERM_BACKGROUND=f"\u001b[48;5;{_rgb_to_xterm_256(RGB(red, green, blue))}m"
+    )
+
+
+def hsl(hue: int, saturation: float, lightness: float) -> XTerm256Color:
+    return rgb(*_hsl_to_rgb(HSL(hue, saturation, lightness)))
+
+
+def cmyk(cyan: float, magenta: float, yellow: float, key: float) -> XTerm256Color:
+    return rgb(*_cmyk_to_rgb(CMYK(cyan, magenta, yellow, key)))
+
+
+def hey_(value: str) -> XTerm256Color:
+    return rgb(*webcolors.hex_to_rgb(value))
+
+
+##
 # dataclass for storing color information
 ##
 
@@ -157,10 +238,10 @@ class XTerm256Color:
         Due to rounding errors, the process may not be able to be reversed identically."""
         if isinstance(other, (int, float)):
             h, s, l = self.HSL
-            return get_color(f'hsl({round(h)},{round(s * 100)},{round(_clamp(l + other) * 100)})')
+            return color(f'hsl({round(h)},{round(s * 100)},{round(_clamp(l + other) * 100)})')
         elif isinstance(other, XTerm256Color):
             r, g, b = [_clamp(round((x[0] + x[1]) / 2), minimum=0, maximum=255) for x in zip(self.RGB, other.RGB)]
-            return get_color(f'rgb({r},{g},{b})')
+            return color(f'rgb({r},{g},{b})')
         else:
             raise TypeError(f'unsupported operand type(s) for +: Color and {type(other)}')
 
@@ -170,76 +251,32 @@ class XTerm256Color:
         Due to rounding errors, the process may not be able to be reversed identically."""
         if isinstance(other, (int, float)):
             h, s, l = self.HSL
-            return get_color(f'hsl({round(h)},{round(s * 100)}%,{round(_clamp(l - other) * 100)}%)')
+            return color(f'hsl({round(h)},{round(s * 100)}%,{round(_clamp(l - other) * 100)}%)')
         elif isinstance(other, XTerm256Color):
             r, g, b = [_clamp(round((x[0] - x[1]) / 2), minimum=0, maximum=255) for x in zip(self.RGB, other.RGB)]
-            return get_color(f'rgb({r},{g},{b})')
+            return color(f'rgb({r},{g},{b})')
         else:
             raise TypeError(f'unsupported operand type(s) for -: Color and {type(other)}')
 
+    def __format__(self, format_spec):
+
+        result = ""
+
+        for format_ in (s for s in format_spec.split("+") if s):
+            format_: str = format_.lower().strip()
+            if format_ in ("c", "color"):
+                result += self.X_TERM
+            elif format_ in ("bg", "background"):
+                result += self.X_TERM_BACKGROUND
+            else:
+                raise ValueError(f'invalid format spec: {format_!r}')
+
+        return result
+
 
 ##
-# interface method (these are the one the developer actual uses)
+# helper methods
 ##
-
-
-def get_color(color: Union[RGB, str]) -> XTerm256Color:
-    """
-    This function takes a string containing color information or rgb values and turns that into a xterm color.
-    This color object can then be used to color the output to the terminal.
-
-    Supported Color Formats
-    -----------------------
-        - the name of the color e.g. 'white', 'orange', ...
-        - rgb(red,green,blue) e.g. rgb(255,255,255)
-        - hsl(hue,saturation,luminance) e.g. hsl(1,2,3)
-        - cmyk(cyan,magenta,yellow,key) e.g. cmyk(1,2,3,4)
-        - hex e.g. #ffffff
-
-    Usage
-    -----
-    >>> white = get_color("#ffffff")
-    >>> black = get_color("black")
-    >>> print(white.X_TERM +
-    ...         black.X_TERM_BACKGROUND +
-    ...         "this is white text on a black background" +
-    ...         XTerm256NoColor)
-
-    Parameters
-    ----------
-    color : str or RGB
-        this either must be a tuple containing rgb values or a string with color information.
-
-    See Also
-    --------
-    foreground_color : returns a string that can be used to color the text (the foreground)
-    background_color : returns a string that can be used to color the background
-    lighten_color : returns the next brighter shade for the given color
-    darken_color: returns the next darker shade for the given color
-    all_color_shades : return all possible shades for the given color
-
-    Returns
-    -------
-    XTerm256Color :
-        a color that stored the color information.
-    """
-
-    r, g, b = color if isinstance(color, RGB) else _color_to_rgb(color)
-
-    try:
-        name = webcolors.rgb_to_name((r, g, b))
-    except ValueError:
-        name = "not defined"
-
-    return XTerm256Color(
-        RGB=RGB(r, g, b),
-        HEX=HEX(webcolors.rgb_to_hex((r, g, b))),
-        HSL=HSL(*_rgb_to_hsl((r, g, b))),
-        CMYK=CMYK(*_rgb_to_cmyk((r, g, b))),
-        NAME=name,
-        X_TERM=f"\u001b[38;5;{_rgb_to_xterm_256((r, g, b))}m",
-        X_TERM_BACKGROUND=f"\u001b[48;5;{_rgb_to_xterm_256(RGB(r, g, b))}m"
-    )
 
 
 def lighten_color(xterm_color: XTerm256Color) -> XTerm256Color:
@@ -336,6 +373,11 @@ def all_color_shades(xterm_color: XTerm256Color) -> list[XTerm256Color]:
     return darker + [xterm_color] + brighter
 
 
+##
+# FormatStr
+##
+
+
 @dataclass(frozen=True, init=False)
 class FormatStr:
     s: str
@@ -354,17 +396,7 @@ class FormatStr:
         s : str
             the string to be comverted to a FormatStr
         """
-        if isinstance(s, str):
-            s = s.replace("{nocolor}", XTerm256NoColor)
-            pattern = r"{(?P<color>((\w+?)|" \
-                      f'{_regex_hexColor}|{_regex_cmykColor}|{_regex_hslColor}|{_regex_rgbColor}' \
-                      r")):(?P<mode>(c|bg))}"
-            while match := re.search(pattern, s):
-                color = get_color(match.group("color"))
-                s = re.sub(pattern,
-                           color.X_TERM if match.group("mode") == "c" else color.X_TERM_BACKGROUND,
-                           s,
-                           count=1)
+        if isinstance(s, str) and s != "":
             s += XTerm256NoColor
         elif isinstance(s, FormatStr):
             s = s.s
