@@ -33,6 +33,7 @@ HSL = NamedTuple("HSL", [("hue", int), ("saturation", float), ("lightness", floa
 CMYK = NamedTuple("CMYK", [("cyan", float), ("magenta", float), ("yellow", float), ("key", float)])
 HEX = type("HEX", (str,), {"__repr__": lambda self: f'HEX={self}'})
 T = TypeVar("T")
+number = Union[int, float]
 
 
 ##
@@ -42,6 +43,25 @@ T = TypeVar("T")
 def _clamp(x: T, minimum: T = 0, maximum: T = 1) -> T:
     """return a value within min and max"""
     return max(minimum, min(x, maximum))
+
+
+def _normalize(value: number, value_range: tuple[number, number]) -> float:
+    """
+    normalizes a value in between a scale
+
+    Parameters
+    ----------
+    value :
+        the value to be normalized
+    value_range :
+        the scale
+
+    Returns
+    -------
+    number :
+        a value between 0 and 1
+    """
+    return _clamp((value - min(*value_range)) / (max(*value_range) - min(*value_range)))
 
 
 ##
@@ -105,6 +125,10 @@ def _hsl_to_rgb(hsl: HSL) -> RGB:
 # color functions
 ##
 
+def no_color() -> str:
+    return str(XTerm256NoColor())
+
+
 def color(color_value: str) -> XTerm256Color:
     """
     This function takes a string containing color information or rgb values and turns that into a xterm color.
@@ -125,7 +149,7 @@ def color(color_value: str) -> XTerm256Color:
     >>> print(white.X_TERM +
     ...         black.X_TERM_BACKGROUND +
     ...         "this is white text on a black background" +
-    ...         XTerm256NoColor)
+    ...         str(XTerm256NoColor))
 
     Parameters
     ----------
@@ -202,7 +226,7 @@ def cmyk(cyan: float, magenta: float, yellow: float, key: float) -> XTerm256Colo
     return rgb(*_cmyk_to_rgb(CMYK(cyan, magenta, yellow, key)))
 
 
-def hey_(value: str) -> XTerm256Color:
+def hex_(value: str) -> XTerm256Color:
     return rgb(*webcolors.hex_to_rgb(value))
 
 
@@ -210,15 +234,30 @@ def hey_(value: str) -> XTerm256Color:
 # dataclass for storing color information
 ##
 
+@dataclass(frozen=True)
+class XTerm256NoColor:
 
-XTerm256NoColor = "\u001b[0m"
+    def __str__(self):
+        return "\u001b[0m"
 
 
 @dataclass(frozen=True, eq=True)
 class XTerm256Color:
-    """this object stores and converts colors. the different color formats can be accessed via the public attributes
-    of the object. if one of these attributes is changed, all others are updated with the new color. the default
-    color is white """
+    """
+    this object stores and converts colors. the different color formats can be accessed via the public attributes
+    of the object.
+
+    To create a color use the factory methods: rgb(), hsl(), hex_(), cmyk() or color(), no_color()
+
+    To use the color when printing, use the format method or a f-string (see examples below=
+
+    Examples
+    --------
+    >>> red = color("red")
+    >>> green = rgb(0, 255, 0)
+    >>> blue = hex_("#0000ff")
+    >>> print(f'{red:c}Red Text{no_color()}No Color{green:bg}{blue:c}Green Background and Blue Text{no_color()}')
+    """
 
     RGB: RGB = field(compare=True)
     HEX: HEX = field(compare=False)
@@ -272,6 +311,15 @@ class XTerm256Color:
                 raise ValueError(f'invalid format spec: {format_!r}')
 
         return result
+
+    def __iter__(self):
+        """
+        Returns
+        -------
+        RGB :
+            returns the red, green and blue value of the color
+        """
+        yield from self.RGB
 
 
 ##
@@ -373,10 +421,50 @@ def all_color_shades(xterm_color: XTerm256Color) -> list[XTerm256Color]:
     return darker + [xterm_color] + brighter
 
 
+def color_scale(value: float, domain: tuple[float, float],
+                color_range: tuple[XTerm256Color, XTerm256Color]) -> XTerm256Color:
+    """
+    Interpolates a color to match the value in the specified scale.
+    If the value is smaller or larger then the domain, the boundaries of the domain will be used as value.
+
+    Examples
+    --------
+    >>> white, black = color("white"), color("black")
+    >>>
+    >>> color_scale(0, (0,1), (white, black))  # will return white
+    >>> color_scale(-1,(0,1), (white, black))  # will also return white
+    >>>
+    >>> color_scale(1, (0,1), (white, black))  # will return black
+    >>> color_scale(2, (0,1), (white, black))  # will also return black
+    >>>
+    >>> color_scale(.5,(0,1), (white, black))  # will return the color in between white and black (~ gray)
+
+    Parameters
+    ----------
+    value :
+        the value translated to the corresponding color shade
+    domain :
+        the range of the value
+    color_range :
+        the two colors to be interpolated.
+
+    Returns
+    -------
+    XTerm256Color :
+        the interpolated color
+    """
+
+    v = _normalize(value, domain)
+    (r1, g1, b1), (r2, g2, b2) = color_range
+    r = (1 - v) * r1 + v * r2
+    g = (1 - v) * g1 + v * g2
+    b = (1 - v) * b1 + v * b2
+    return rgb(int(r), int(g), int(b))
+
+
 ##
 # FormatStr
 ##
-
 
 @dataclass(frozen=True, init=False)
 class FormatStr:
@@ -397,7 +485,7 @@ class FormatStr:
             the string to be comverted to a FormatStr
         """
         if isinstance(s, str) and s != "":
-            s += XTerm256NoColor
+            s += str(XTerm256NoColor())
         elif isinstance(s, FormatStr):
             s = s.s
         else:
@@ -416,8 +504,8 @@ class FormatStr:
         return len(self.without_escape_codes())
 
     def __str__(self):
-        return self.s + XTerm256NoColor
-
+        return self.s
+    
     def __repr__(self):
         return f"FormatStr(s='{str(self)}')"
 

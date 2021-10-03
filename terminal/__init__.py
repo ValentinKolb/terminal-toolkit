@@ -6,7 +6,7 @@ import shutil
 import signal
 import sys
 import termios
-from typing import NewType, Union, AnyStr
+from typing import Union, AnyStr, Optional
 
 HEIGHT = int
 WIDTH = int
@@ -303,10 +303,10 @@ def put_pixels(pixels: dict[tuple[int, int], AnyStr], flush=True):
 
 
 def configure(
-        fullscreen_mode: bool = False,
-        console_echo: bool = True,
-        show_cursor: bool = True,
-        mouse_movement_reporting: bool = False):
+        fullscreen_mode: Optional[bool] = False,
+        console_echo: Optional[bool] = True,
+        show_cursor: Optional[bool] = True,
+        mouse_movement_reporting: Optional[bool] = False):
     """
     With this function special functionality of a classic terminal emulator can be activated.
     All changes to the terminal will be undone after the python program ends.

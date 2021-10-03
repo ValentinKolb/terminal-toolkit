@@ -3,7 +3,7 @@ import queue
 import threading
 from statistics import mean
 from time import perf_counter
-from typing import Optional, Generator, AsyncGenerator
+from typing import Generator, AsyncGenerator, Literal
 
 from terminal import *
 from terminal import WIDTH, HEIGHT
@@ -15,23 +15,206 @@ X = int
 Y = int
 
 
-class StatusWheel:
-    """this class produces a small progress wheel.
-    usage: make an instance of this object.
-    every time __str__ is called on this object the next symbol is returned """
+def shift_pixels(pixels: dict[(X, Y), AnyStr], shift: (X, Y)) -> dict[(X, Y), AnyStr]:
+    """
+    creates a copy of the pixels where every pixel position is shifted by the specified shift
 
-    def __init__(self):
+    Parameters
+    ----------
+    pixels : dict
+        to be shifted
+    shift : tuple
+        the value of how much to shift in x and y direction
+
+    Returns
+    -------
+    tuple :
+        the shifted pixels
+    """
+
+    new_pixels = {}
+    shift_x, shift_y = shift
+    for x, y in pixels:
+        new_pixels[(x + shift_x, y + shift_y)] = pixels[(x, y)]
+    return new_pixels
+
+
+def Table(data: dict[str, list[Union[AnyStr, FormatStr]]],
+          show_header=True,
+          separators: tuple[str, str, str] = (" | ", "-", "+")) -> dict[(X, Y), AnyStr]:
+    no_rows = len(data)
+    horizontal_sep, vertical_sep, cross_sep = separators
+    pixels = {}
+    x, y = 0, 0
+
+    row_widths: list[int] = [
+        max(len(str(s)) for s in data[key]) for key in data
+    ]
+
+    if show_header:
+        row = vertical_sep.join(str(FormatStr(header).just(width=row_widths[i], mode="left"))
+                                for i, header in enumerate(data.keys()))
+
+        for i, c in enumerate(row):
+            pixels[(i, y)] = c
+
+        y += 1
+
+        row = cross_sep.join(str(horizontal_sep) * width
+                             for width in row_widths
+                             )
+
+        for i, c in enumerate(str(horizontal_sep) * len(row)):
+            pixels[(i, y)] = c
+
+        y += 1
+
+    return pixels
+
+
+class ProgressBar:
+    def __init__(self, size: Literal["small", "large"] = "large", show_percentage=True):
+        """
+
+        Parameters
+        ----------
+        size : str
+            whether to show a small (1 by 10 characters) or large (1 by 20 characters) bar
+        show_percentage : bool
+            whether to append the current percentage (adds 7 characters to end)
+        """
+        self.value = 0
+        self.show_percentage = show_percentage
+        self.size = size
+        if size not in ("small", "large"):
+            raise ValueError(f"invalid size: {size}")
+
+    def update(self, percent_done: float):
+        """
+        update the value of the progressbar
+
+        Parameters
+        ----------
+        percent_done : float
+            the current percent the progress
+        """
+        self.value = percent_done
+
+    @property
+    def _symbols(self) -> dict:
+        if self.size == "small":
+            return {
+                10: "▉",
+                9: "▊",
+                8: "▊",
+                7: "▋",
+                6: "▌",
+                5: "▌",
+                4: "▍",
+                3: "▎",
+                2: "▏",
+                1: "▏",
+                0: ""
+            }
+        elif self.size == "large":
+            return {
+                10: "▉▉",
+                9: "▉▋",
+                8: "▉▋",
+                7: "▉▍",
+                6: "▉▏",
+                5: "▉",
+                4: "▋",
+                3: "▍",
+                2: "▏",
+                1: "▏",
+                0: ""
+            }
+
+    def __str__(self):
+        curr_value = int(min(100, 100 * self.value))
+
+        result = ""
+        i = 0
+        while i < curr_value:
+            inc = min(10, curr_value - i)
+            result += self._symbols[inc]
+            i += inc
+
+        width = 20 if self.size == "large" else 10
+        if self.show_percentage:
+            width += 7
+
+        if self.show_percentage:
+            result += f' {curr_value:.1f}%'
+
+        return result
+
+
+class StatusWheel:
+    """
+    this class produces a small progress wheel.
+    usage: make an instance of this object.
+    every time __str__ is called on this object the next symbol is returned
+    """
+
+    def __init__(self, size: Literal["small", "large"] = "large"):
+        """
+
+        Parameters
+        ----------
+        size :
+            whether to display a small (1 by 3 characters) or small (1 by 1 character) status wheel
+        """
         self.num = 0
+        self.size = size
+
         self.__symbols__ = {
-            0: "[|]",
-            1: "[/]",
-            2: "[-]",
-            3: "[\\]"
+            0: "▁",
+            1: "▃",
+            2: "▄",
+            3: "▅",
+            4: "▆",
+            5: "▆",
+            6: "▇",
+            7: "█",
+            8: "▇",
+            9: "▆",
+            10: "▆",
+            11: "▅",
+            12: "▄",
+            13: "▃",
+            14: "▁",
         }
+
+        if size not in ("large", "small"):
+            raise ValueError(f"invalid size: {size}")
+
+    @property
+    def _symbols(self) -> dict:
+        if self.size == "large":
+            return {
+                0: "[|]",
+                1: "[/]",
+                2: "[-]",
+                3: "[\\]"
+            }
+        elif self.size == "small":
+            return {
+                8: "⣾",
+                7: "⣽",
+                6: "⣻",
+                5: "⢿",
+                4: "⡿",
+                3: "⣟",
+                2: "⣟",
+                1: "⣯",
+                0: "⣷"
+            }
 
     def __str__(self) -> str:
         self.num += 1
-        return self.__symbols__[self.num % 4]
+        return self._symbols[self.num % len(self._symbols)]
 
 
 class TerminalScreen:
@@ -105,6 +288,12 @@ class TerminalScreen:
             an event object that can be quried to get the user input
         """
         try:
+            configure(
+                mouse_movement_reporting=True,
+                console_echo=None,
+                fullscreen_mode=None,
+                show_cursor=None
+            )
             if timeout is None:
                 while True:
                     yield next_event()
@@ -124,6 +313,13 @@ class TerminalScreen:
                         yield Timeout()
         except KeyboardInterrupt:
             yield ScreenClosed()
+        finally:
+            configure(
+                mouse_movement_reporting=False,
+                console_echo=None,
+                fullscreen_mode=None,
+                show_cursor=None
+            )
 
     async def async_events(self) -> AsyncGenerator[Event, None]:
         """
@@ -143,10 +339,23 @@ class TerminalScreen:
             an event object that can be quried to get the user input
         """
         try:
+            configure(
+                mouse_movement_reporting=True,
+                console_echo=None,
+                fullscreen_mode=None,
+                show_cursor=None
+            )
             while True:
                 yield await events.async_next_event()
         except KeyboardInterrupt:
             yield ScreenClosed()
+        finally:
+            configure(
+                mouse_movement_reporting=False,
+                console_echo=None,
+                fullscreen_mode=None,
+                show_cursor=None
+            )
 
     def get_mouse_pos(self) -> tuple[X, Y]:
         """
@@ -191,11 +400,12 @@ class TerminalScreen:
             the string
         """
         x, y = pos
+        s = s if isinstance(s, FormatStr) else FormatStr(s)
         for c in s:
             self._curr_screen_buf[(x, y)] = c
             x += 1
 
-    def put_pixels(self, pixels: dict[(int, int), AnyStr]):
+    def put_pixels(self, pixels: dict[(X, Y), AnyStr]):
         """
         This adds a pixel dict directly to the current screen buffer. The keys must be tuples of two integers,
         representing the x and y position and the values must AnyStr.
@@ -274,10 +484,9 @@ class TerminalScreen:
         """
         set_title(self.title)
         configure(
-            fullscreen_mode=True,
             console_echo=False,
+            fullscreen_mode=True,
             show_cursor=False,
-            mouse_movement_reporting=True
         )
 
     def quit(self):
@@ -285,10 +494,9 @@ class TerminalScreen:
         This must be called to restore the normal state of the terminal!
         """
         configure(
-            fullscreen_mode=False,
             console_echo=True,
+            fullscreen_mode=False,
             show_cursor=True,
-            mouse_movement_reporting=False
         )
         set_title("")
 
