@@ -1,10 +1,8 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
 from typing import Literal, Optional, Generator
-from typing import Union
-from color import no_color, XTerm256NoColor
+from terminal.color import no_color, XTerm256NoColor
 
 _regex_escape_code: str = r"(\x1b\[\d+(;\d+){0,2}m)*"
 _regex_escape_code_char: str = "(" + _regex_escape_code + r"(\S)" + _regex_escape_code + r")|(\s)"
@@ -144,6 +142,23 @@ def __tokenize(s: str) -> Generator[str, None, None]:
     """
     In development!!! very slow at the moment
     """
+
+    pattern_color = re.compile(r"(?P<color>\x1b\[38(;\d+){0,2}m)")
+    pattern_bg_color = re.compile(r"(?P<bg_color>\x1b\[48(;\d+){0,2}m)")
+    pattern_no_color = re.compile(r"\x1b\[0m")
+
+    color = ""
+    bg_color = ""
+
+    for c in chars(s):
+        if m := pattern_color.search(c):
+            color = m.group("color")
+        if m := pattern_bg_color.search(c):
+            bg_color = m.group("bg_color")
+
+        yield color + bg_color + without_escape_codes(c) + no_color()
+
+    _ = """"
     pattern = re.compile(r"(?P<color_codes>\x1b\[\d+(;\d+){0,2}m)*(?P<char>.)")
     pattern_end = re.compile(r"(\x1b\[\d+(;\d+){0,2}m)*$")
     s_ = pattern_end.sub("", s)
@@ -157,3 +172,4 @@ def __tokenize(s: str) -> Generator[str, None, None]:
 
         if s_.endswith("m"):
             s_ = pattern_end.sub("", s_)
+    """
