@@ -3,31 +3,15 @@ from __future__ import annotations
 import colorsys
 import re
 from dataclasses import dataclass, field
-from typing import Literal, Optional, Generator
-from typing import NamedTuple, TypeVar
-from typing import Union
+from typing import NamedTuple, TypeVar, Union
 
 import webcolors
 
-##
-# regex strings used for parsing colors
-##
 _regex_rgbColor = r'rgb\s?\((?P<red>\d{1,3}),\s?(?P<green>\d{1,3}),\s?(?P<blue>\d{1,3})\)'
 _regex_hslColor = r'hsl\s?\((?P<hue>\d{1,3})°?,\s?(?P<saturation>\d{1,3})%?,\s?(?P<lightness>\d{1,3})%?\)'
 _regex_cmykColor = r'cmyk\s?\((?P<cyan>\d{1,3})%?,\s?(?P<magenta>\d{1,3})%?,' \
                    r'\s?(?P<yellow>\d{1,3})%?,\s?(?P<key>\d{1,3})%?\)'
 _regex_hexColor = r'(?P<hex>#[0-9a-fA-F]+)'
-
-##
-# regx strings used for escaped strings
-##
-_regex_escape_code: str = r"(\u001b\[\d+(;\d+){0,2}m)*"
-_regex_escape_code_char: str = "(" + _regex_escape_code + r"(\S)" + _regex_escape_code + r")|(\s)"
-_regex_escape_code_word: str = _regex_escape_code + r"(\S+)" + _regex_escape_code
-
-##
-# proxy datatype
-##
 RGB = NamedTuple("RGB", [("red", int), ("green", int), ("blue", int)])
 HSL = NamedTuple("HSL", [("hue", int), ("saturation", float), ("lightness", float)])
 CMYK = NamedTuple("CMYK", [("cyan", float), ("magenta", float), ("yellow", float), ("key", float)])
@@ -35,10 +19,6 @@ HEX = type("HEX", (str,), {"__repr__": lambda self: f'HEX={self}'})
 T = TypeVar("T")
 number = Union[int, float]
 
-
-##
-# helper functions
-##
 
 def _clamp(x: T, minimum: T = 0, maximum: T = 1) -> T:
     """return a value within min and max"""
@@ -62,13 +42,6 @@ def _normalize(value: number, value_range: tuple[number, number]) -> float:
         a value between 0 and 1
     """
     return _clamp((value - min(*value_range)) / (max(*value_range) - min(*value_range)))
-
-
-##
-# functions for converting colors
-# the basic idea is, that a string is parsed, that converted into rgb values
-# which then can be converted into any other color format (e.g hsl, hex, ..)
-##
 
 
 def _rgb_to_xterm_256(rgb: RGB) -> int:
@@ -120,10 +93,6 @@ def _hsl_to_rgb(hsl: HSL) -> RGB:
     r, g, b = [int(x * 255) for x in [r, g, b]]
     return r, g, b
 
-
-##
-# color functions
-##
 
 def no_color() -> str:
     return str(XTerm256NoColor())
@@ -230,10 +199,6 @@ def hex_(value: str) -> XTerm256Color:
     return rgb(*webcolors.hex_to_rgb(value))
 
 
-##
-# dataclass for storing color information
-##
-
 @dataclass(frozen=True)
 class XTerm256NoColor:
 
@@ -320,11 +285,6 @@ class XTerm256Color:
             returns the red, green and blue value of the color
         """
         yield from self.RGB
-
-
-##
-# helper methods
-##
 
 
 def lighten_color(xterm_color: XTerm256Color) -> XTerm256Color:
@@ -460,231 +420,3 @@ def color_scale(value: float, domain: tuple[float, float],
     g = (1 - v) * g1 + v * g2
     b = (1 - v) * b1 + v * b2
     return rgb(int(r), int(g), int(b))
-
-
-##
-# FormatStr
-##
-
-@dataclass(frozen=True, init=False)
-class FormatStr:
-    s: str
-
-    def __init__(self, s: Union[str, FormatStr]):
-        """
-        creates new FormatStr
-
-        Examples
-        --------
-        >>> s = FormatStr("{red:c}Red Color{nocolor}{rgb(0, 0, 255):bg}Blue Background")
-        >>> print(s)
-
-        Parameters
-        ----------
-        s : str
-            the string to be comverted to a FormatStr
-        """
-        if isinstance(s, str) and s != "":
-            s += str(XTerm256NoColor())
-        elif isinstance(s, FormatStr):
-            s = s.s
-        else:
-            raise ValueError(f"invalid type for parameter 's': {type(s)}")
-        super(FormatStr, self).__setattr__("s", s)
-
-    def __eq__(self, other: Union[str, FormatStr]):
-        if isinstance(other, str):
-            return other == self.s
-        elif isinstance(other, FormatStr):
-            return other.s == self.s
-        else:
-            raise ValueError(f"invalid type for comparison: {type(other)}")
-
-    def __len__(self):
-        return len(self.without_escape_codes())
-
-    def __str__(self):
-        return self.s
-    
-    def __repr__(self):
-        return f"FormatStr(s='{str(self)}')"
-
-    def __contains__(self, item: Union[str, FormatStr]) -> bool:
-        """
-        use: "test" in s
-
-        Parameters
-        ----------
-        item : str
-            will be tested
-
-        Returns
-        -------
-        bool:
-            true if item is a string or formatted string an a subsequence of this formatted string
-        """
-        if isinstance(item, FormatStr):
-            return item.s in self.s
-        elif isinstance(item, str):
-            return item in self.s
-        else:
-            return False
-
-    def __add__(self, other) -> FormatStr:
-        """
-        allows the concatenation of two strings. it is possible to combine two formatted strings, an formatted string
-        with a str and also a str with an formatted str (see __radd__). if an formatted string is concatenated with a
-        str, the styles are inherited from the formatted string. if two formatted strings are joined, the style of the
-        first formatted string is inherited.
-
-        Parameters
-        ----------
-        other:
-            will be joined with this formatted string
-
-        Returns
-        -------
-        EscapedStr:
-            because formatted strings are immutable, a new formatted string is generated and returned by this method
-        """
-        if isinstance(other, FormatStr):
-            return FormatStr(self.s + other.s)
-        elif isinstance(other, str):
-            return FormatStr(self.s + other)
-        else:
-            raise TypeError(f"can only concatenate FormatStr (not '{type(other).__name__}') to FormatStr")
-
-    def __radd__(self, other) -> FormatStr:
-        """
-        allows the concatenation of two strings. it is possible to combine two formatted strings, an formatted string
-        with a str and also a str with an formatted str. if an formatted string is concatenated with a
-        str, the styles are inherited from the formatted string. if two formatted strings are joined, the style of the
-        first formatted string is inherited.
-
-        Parameters
-        ----------
-        other:
-            will be joined with this formatted string
-
-        Returns
-        -------
-        EscapedStr:
-            because formatted strings are immutable, a new formatted string is generated and returned by this method
-        """
-        if isinstance(other, str):
-            return FormatStr(other + self.s)
-        elif isinstance(other, FormatStr):
-            return FormatStr(other.s + self.s)
-        else:
-            raise TypeError(f"can only concatenate FormatStr (not '{type(other).__name__}') to FormatStr")
-
-    def just(self, width: int, mode: Optional[Literal["left", "right", "center"]], fill_char=" ") -> FormatStr:
-        """
-        this method aligns the string depending on the mode
-
-        Parameters
-        ----------
-        width: int
-            the string is adjusted to this width
-        mode: str
-            the string is adjusted according to the mode specified here. the mode defined in the stylesheet is always
-            used first. if no mode is declared in the stylesheet, the mode must be passed directly to the method
-
-        fill_char: str
-            if the length of the string is shorter than the specified width, the string is padded with this character
-
-        Returns
-        -------
-        str:
-            a new formatted string which now has exactly the same length as the specified width. the additional places
-            were filled up with the fill_char. the new formatted string inherits the style of this formatted string
-
-        Raises
-        ------
-        ValueError
-            is raised if the length of this formatted string is bigger that the specified width
-        ValueError
-            is raised if the length of the fill_char is not one
-
-        """
-
-        if len(FormatStr(fill_char)) != 1:
-            raise ValueError("the length of the fill_char must be 1")
-
-        width = max(len(self), width)
-
-        if mode == "left":
-            s = self.s + fill_char * (width - len(self))
-        elif mode == "right":
-            s = fill_char * (width - len(self)) + self.s
-        elif mode == "center":
-            shift = (width - len(self)) // 2
-            s = fill_char * shift + self.s + fill_char * (shift + (width - len(self)) % 2)
-        else:
-            raise ValueError(f"invalid mode: {mode}")
-
-        return FormatStr(s)
-
-    def wrap(self, width: int) -> Generator[FormatStr, None, None]:
-        """
-        this method splits the formatted string into substrings of the specified length.
-        if the specified width is smaller than every word, each line will contain only one word.
-
-        Parameters
-        ----------
-        width : int
-            the maximum width a substring may have
-
-        Returns
-        -------
-        Iterable :
-            each line is a new formatted string
-        """
-        words = list(self.to_words())
-        line = []
-        while words:
-            word = words.pop(0)
-            if len(FormatStr(" ".join(str(s) for s in [*line, word]))) > width or word == "\n":
-                if line:
-                    yield FormatStr(" ".join(str(s) for s in line))
-                line = [word]
-            else:
-                line.append(word)
-        yield FormatStr(" ".join(str(s) for s in line))
-
-    def without_escape_codes(self) -> str:
-        """
-        removes all formatted codes and returns a string containing only letters, whitespace characters,
-        numbers and special characters. if the string does not contain any escape codes a new string
-        with unchanged content will be returned
-
-        Returns
-        -------
-        str:
-            a string without escape codes
-        """
-        return re.sub(_regex_escape_code, "", self.s, 0)
-
-    def __iter__(self) -> Generator[str, None, None]:
-        """
-        splits a string into individual characters. this method special escape characters aware
-
-        Returns
-        -------
-        Iterator:
-            an Generator yielding all characters
-        """
-        for match in re.finditer(_regex_escape_code_char, self.s):
-            yield self.s[match.start():match.end()]
-
-    def to_words(self) -> Generator[FormatStr, None, None]:
-        """
-        splits a string into individual words. this method special escape characters aware
-
-        Returns
-        -------
-        Iterator:
-            an Generator yielding all words
-        """
-        for match in re.finditer(_regex_escape_code_word, self.s):
-            yield FormatStr(self.s[match.start():match.end()])

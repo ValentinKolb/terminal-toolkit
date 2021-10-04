@@ -9,7 +9,7 @@ from terminal import *
 from terminal import WIDTH, HEIGHT
 from terminal import events
 from terminal.events import Event, Timeout, next_event, ScreenClosed
-from terminal.styles import FormatStr
+from terminal import string
 
 X = int
 Y = int
@@ -31,7 +31,6 @@ def shift_pixels(pixels: dict[(X, Y), AnyStr], shift: (X, Y)) -> dict[(X, Y), An
     tuple :
         the shifted pixels
     """
-
     new_pixels = {}
     shift_x, shift_y = shift
     for x, y in pixels:
@@ -39,7 +38,7 @@ def shift_pixels(pixels: dict[(X, Y), AnyStr], shift: (X, Y)) -> dict[(X, Y), An
     return new_pixels
 
 
-def Table(data: dict[str, list[Union[AnyStr, FormatStr]]],
+def Table(data: dict[str, list[str]],
           show_header=True,
           separators: tuple[str, str, str] = (" | ", "-", "+")) -> dict[(X, Y), AnyStr]:
     no_rows = len(data)
@@ -48,11 +47,11 @@ def Table(data: dict[str, list[Union[AnyStr, FormatStr]]],
     x, y = 0, 0
 
     row_widths: list[int] = [
-        max(len(str(s)) for s in data[key]) for key in data
+        max(string.escaped_len(str(s)) for s in data[key]) for key in data
     ]
 
     if show_header:
-        row = vertical_sep.join(str(FormatStr(header).just(width=row_widths[i], mode="left"))
+        row = vertical_sep.join(str(string.just(header, width=row_widths[i], mode="left"))
                                 for i, header in enumerate(data.keys()))
 
         for i, c in enumerate(row):
@@ -381,7 +380,7 @@ class TerminalScreen:
         """
         return get_size()
 
-    def put_str(self, pos: tuple[X, Y], s: Union[AnyStr, FormatStr]):
+    def put_str(self, pos: tuple[X, Y], s: AnyStr):
         """
         This method adds the string to the current screen buffer at the specified location. To make this string
         (and everything else in the screen buffer) show up, the write() method must be invoked
@@ -400,8 +399,7 @@ class TerminalScreen:
             the string
         """
         x, y = pos
-        s = s if isinstance(s, FormatStr) else FormatStr(s)
-        for c in s:
+        for c in string.chars(s):
             self._curr_screen_buf[(x, y)] = c
             x += 1
 
